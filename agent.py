@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 import asyncio
 from pathlib import Path
 import click
@@ -9,10 +10,10 @@ from rich.panel import Panel
 from rich.console import Console
 from rich.markdown import Markdown
 from pydantic_ai import Agent, RunContext
-from pydantic_ai.messages import ModelResponse, ToolCallPart
 
 from index import FAQIndex
 from tools import web_search
+from models import Answer, Trace
 
 # Setup
 load_dotenv()
@@ -31,6 +32,9 @@ FAQ_PATH = Path(__file__).parent / "data" / "devcolorfaq.txt"
 MODEL = os.environ.get("MODEL", "anthropic/claude-opus-4.7")
 MAX_HISTORY_MESSAGES = 10
 
+# Per-turn trace buffer, cleared at the start of each user query.
+TRACES: list[Trace] = []
+
 # Agent
 agent = Agent(
     f'openai-chat:{MODEL}',
@@ -39,27 +43,53 @@ agent = Agent(
                     If (and only if) search_faq_tool returns an empty list,
                     you MUST ask the user for explicit permission before calling
                     web_search_tool. Never call web_search_tool without that
-                    confirmation.""",
+                    confirmation.
+
+                    Always reply with a structured Answer:
+                      - answer: the user-facing response (Markdown allowed).
+                      - sources: list of FAQ entry_id ints you actually used
+                        (empty list if you could not answer or relied on web).
+                      - could_answer: true if you produced a substantive answer,
+                        false if you had to ask the user a clarifying question
+                        or could not answer.""",
     deps_type=FAQIndex,
+    output_type=Answer,
 )
 
 @agent.tool
 def search_faq_tool(ctx: RunContext[FAQIndex], query: str, top_k: int = 3) -> list[dict]:
     """Search the /dev/color FAQ knowledge base."""
+    start = time.perf_counter()
     results = ctx.deps.search(query, top_k)
-    return [r.model_dump() for r in results if r.score > 0.5]
+    filtered = [r for r in results if r.score > 0.5]
+    TRACES.append(Trace(
+        tool_name="search_faq_tool",
+        args={"query": query, "top_k": top_k},
+        result_ids=[r.entry_id for r in filtered],
+        result_scores=[round(r.score, 3) for r in filtered],
+        elapsed_ms=int((time.perf_counter() - start) * 1000),
+    ))
+    return [r.model_dump() for r in filtered]
 
 @agent.tool_plain
 def web_search_tool(query: str) -> list[dict]:
     """Search the web for information not found in the FAQ."""
-    return web_search(query)
+    start = time.perf_counter()
+    results = web_search(query)
+    TRACES.append(Trace(
+        tool_name="web_search_tool",
+        args={"query": query},
+        elapsed_ms=int((time.perf_counter() - start) * 1000),
+    ))
+    return results
 
-def print_trace(result):
-    for msg in result.all_messages():
-        if isinstance(msg, ModelResponse):
-            for part in msg.parts:
-                if isinstance(part, ToolCallPart):
-                    rprint(f"  [bold yellow]🔧 Tool:[/] {part.tool_name}({part.args})")
+def print_trace() -> None:
+    for t in TRACES:
+        rprint(
+            f"  [bold yellow]🔧 {t.tool_name}[/]({t.args}) "
+            f"→ ids={t.result_ids} scores={t.result_scores} "
+            f"[dim]({t.elapsed_ms}ms)[/]"
+        )
 
 async def run(verbose: bool = False):
     with console.status("[bold green]Loading FAQ index..."):
@@ -79,13 +109,18 @@ async def run(verbose: bool = False):
             rprint("[bold red]Goodbye![/]")
             break
 
+        TRACES.clear()
         with console.status("[bold cyan]Thinking..."):
             result = await agent.run(query, deps=index, message_history=message_history)
 
         if verbose:
-            print_trace(result)
+            print_trace()
 
-        console.print(Panel(Markdown(result.output), title="💬 Answer", border_style="green"))
+        answer: Answer = result.output
+        title = "💬 Answer" if answer.could_answer else "💬 Agent"
+        if answer.sources:
+            title += f"  [dim](sources: {answer.sources})[/]"
+        console.print(Panel(Markdown(answer.answer), title=title, border_style="green"))
         message_history = result.all_messages()
 
         if len(message_history) >= MAX_HISTORY_MESSAGES:
