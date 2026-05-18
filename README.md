@@ -55,86 +55,92 @@ Requires Python ≥ 3.10.
 
 ## Example output
 
-Run with the three required queries:
+The agent returns a structured `Answer` object (`answer`, `sources`, `could_answer`).
+The `sources` list contains the FAQ entry IDs the model actually used, and is shown in
+the panel title so user can see which corpus entries grounded each response.
+
+Example queries and response:
 
 ### 1. How can /dev/color help me develop my career?
 
 ```
-/dev/color is designed to help Black technologists like you grow and advance
-in tech. Here's how it can support your career development:
-
-🌱 Community & Mentorship
- • Strong peer community: /dev/color fosters a supportive network of Black
-   software engineers, founders, and leaders who help each other navigate
-   challenges in the tech industry.
- • Mentorship programs: You can connect with mentors who can guide you
-   through career decisions, skill-building, and leadership growth.
-
-📈 Career Development Resources
- • Access to professional development sessions, workshops, and panels
-   designed to help you advance—whether you're an engineer, aspiring
-   manager, or founder.
- • Resources tailored to help Black technologists overcome systemic barriers
-   and unlock new opportunities.
-
-🤝 Industry Partnerships & Networking
- • /dev/color collaborates with organizations like the Black Product
-   Managers Network, ColorStack, and Goodie Nation, expanding your access to
-   communities across the tech ecosystem.
- • Partnerships with companies like Pinterest, Grammarly, and Concrete Rose
-   Capital create networking events and direct connections to industry
-   opportunities.
-
-🎯 Long-Term Impact
-By being part of /dev/color, you're not just developing your own
-career—you're also helping advance diversity and equity in tech as part of a
-broader movement.
+╭────────────────── 💬 Answer  (sources: [1, 3, 6]) ───────────────────╮
+│ /dev/color offers several ways to help you develop your career as a  │
+│ Black technologist:                                                  │
+│                                                                      │
+│  • The A* Program (flagship initiative): Designed for Black software │
+│    engineers and managers, this program helps you set and achieve    │
+│    ambitious career goals through peer support and mentorship.       │
+│    You'll join a small, year-round squad to collaborate on career    │
+│    development, problem-solving, skill-building, networking, and     │
+│    leadership development.                                           │
+│  • Mentorship & Community: /dev/color fosters a strong community of  │
+│    Black technologists where you can connect with peers, mentors,    │
+│    founders, and leaders who can help you navigate career challenges │
+│    and advance professionally.                                       │
+│  • Professional Development Events: Through partnerships with        │
+│    companies like Pinterest, Grammarly, and Concrete Rose Capital —  │
+│    and organizations like the Black Product Managers Network,        │
+│    ColorStack, and Goodie Nation — /dev/color hosts panels,          │
+│    networking events, and professional development sessions that     │
+│    connect members directly with industry opportunities.             │
+╰──────────────────────────────────────────────────────────────────────╯
 ```
 
 ### 2. How can I contribute to /dev/color?
 
 ```
-There are several great ways you can contribute to /dev/color's mission of
-empowering Black technologists:
-
-👤 As an Individual
- • Make a financial contribution — Individual donations help sustain the
-   organization's programs and community initiatives.
- • Participate in mentorship programs — Share your expertise by mentoring
-   others, or get involved as a mentee to help grow the community.
- • Advocate for diversity in tech — Use your voice and platform to promote
-   inclusion and equity in the tech industry.
-
-🏢 As a Company
- • Sponsor events — Corporate sponsorships fuel panels, networking events,
-   and professional development sessions.
- • Provide funding — Corporate partners contributed roughly $1.74 million in
-   2023, making them the largest source of support for /dev/color's work.
- • Offer professional development opportunities — Companies can directly
-   invest in Black technologists by providing workshops, training, or career
-   programs.
-
-💡 Why It Matters
-Every contribution—big or small—helps /dev/color create a more inclusive and
-equitable tech industry, supporting Black software engineers, founders, and
-leaders along the way.
+╭─────────────────── 💬 Answer  (sources: [10, 6]) ────────────────────╮
+│ There are several ways to contribute to /dev/color's mission of      │
+│ empowering Black technologists:                                      │
+│                                                                      │
+│ As an individual:                                                    │
+│  • 💰 Make a financial contribution to help sustain programs and     │
+│    resources                                                         │
+│  • 🤝 Participate in mentorship programs by sharing your experience  │
+│  • 📣 Advocate for diversity in tech within your network/workplace   │
+│                                                                      │
+│ As a company:                                                        │
+│  • 🎤 Sponsor events such as panels, networking nights, and          │
+│    professional development sessions                                 │
+│  • 💵 Provide funding to support /dev/color's programs and           │
+│    operations                                                        │
+│  • 🚀 Offer professional development opportunities for Black         │
+│    technologists (similar to past collaborations with Pinterest,     │
+│    Grammarly, and Concrete Rose Capital)                             │
+╰──────────────────────────────────────────────────────────────────────╯
+⚠ Conversation history reached 10 messages — clearing context to keep
+responses focused.
 ```
+
+> Note: the agent caps conversation history at 10 messages and resets it
+> with the warning above, so each new question starts fresh.
 
 ### 3. In which cities is /dev/color located?
 
 ```
-Based on the FAQ, /dev/color has hosted in-person events in these major
-cities:
+╭───────────────────── 💬 Answer  (sources: [5]) ──────────────────────╮
+│ Based on the /dev/color FAQ, the organization has hosted in-person   │
+│ events in several major U.S. cities, including:                      │
+│                                                                      │
+│  • San Francisco                                                     │
+│  • New York                                                          │
+│  • Atlanta                                                           │
+│  • Seattle                                                           │
+│                                                                      │
+│ These events were supported by corporate partners like LinkedIn and  │
+│ Intuit and serve as hubs where Black technologists can connect,      │
+│ learn, and grow.                                                     │
+╰──────────────────────────────────────────────────────────────────────╯
+```
 
- • 🌉 San Francisco
- • 🗽 New York
- • 🍑 Atlanta
- • 🌲 Seattle
+### Verbose mode
 
-These events were supported by corporate partners like LinkedIn and Intuit,
-providing in-person opportunities for Black technologists to connect, learn,
-and grow.
+Running with `--verbose` additionally prints a structured `Trace` for each
+tool call (tool name, args, FAQ entry IDs returned, similarity scores, and
+elapsed time), e.g.:
 
-The FAQ specifically mentions these as event locations rather than office
-locations.
+```
+  🔧 search_faq_tool({'query': 'cities /dev/color located', 'top_k': 3})
+     → ids=[5] scores=[0.612] (8ms)
 ```
