@@ -30,7 +30,7 @@ console = Console()
 
 FAQ_PATH = Path(__file__).parent / "data" / "devcolorfaq.txt"
 MODEL = os.environ.get("MODEL", "anthropic/claude-opus-4.7")
-MAX_HISTORY_MESSAGES = 10
+MAX_HISTORY_MESSAGES = 100
 
 # Per-turn trace buffer, cleared at the start of each user query.
 TRACES: list[Trace] = []
